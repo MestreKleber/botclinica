@@ -1,5 +1,83 @@
-node_modules
-# Keep environment variables out of version control
-.env
+# dependencies
+/node_modules
 
-/generated/prisma
+# build
+/dist
+/build
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# environment
+.env
+.env.*
+!.env.example
+
+# prisma
+/prisma/dev.db
+/prisma/dev.db-journal
+
+# docker
+/docker/postgres/data
+/docker/redis/data
+
+# vscode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# mac/windows
+.DS_Store
+Thumbs.db
+
+# coverage
+/coverage
+
+# temp
+/tmp
+/temp
+
+# cache
+/.cache
+
+# runtime
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# uploads
+/uploads
+
+# sentry
+.sentryclirc
+
+# generated
+/generated
+
+# nestjs
+/.nestjs-cli.json
+
+# turbo
+/.turbo
+
+# pnpm
+.pnpm-store
+
+# idea
+.idea
+
+# docker override
+docker-compose.override.yml
+
+# local configs
+*.local
+
+# certificates
+*.pem
+*.key
+*.crt
