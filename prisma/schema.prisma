@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -10,4 +5,296 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  AGENT
+  BOT
+}
+
+enum ProviderType {
+  EVOLUTION_API
+}
+
+enum ProviderStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum ProviderSessionStatus {
+  ACTIVE
+  DISCONNECTED
+  ERROR
+}
+
+enum ConversationMode {
+  BOT
+  HUMAN
+  PAUSED
+}
+
+enum ConversationState {
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  PENDING
+  SCHEDULED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
+}
+
+enum MessageKind {
+  TEXT
+  MEDIA
+  TEMPLATE
+  SYSTEM
+}
+
+enum LeadStatus {
+  NEW
+  QUALIFIED
+  CONVERTED
+  DISQUALIFIED
+}
+
+enum AutomationTrigger {
+  INCOMING_MESSAGE
+  FOLLOW_UP
+  HUMAN_TAKEOVER
+  NO_REPLY
+}
+
+enum ScheduledJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  DEAD_LETTER
+}
+
+enum ScheduledJobType {
+  OUTGOING_MESSAGE
+  FOLLOWUP
+  AUTOMATION
+  PROVIDER_EVENT
+  INCOMING_MESSAGE
+  AI_PROCESSING
+}
+
+model Tenant {
+  id        String       @id @default(cuid())
+  name      String
+  slug      String       @unique
+  timezone  String?      @map("timezone")
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  users         User[]
+  providers     Provider[]
+  contacts      Contact[]
+  leads         Lead[]
+  conversations Conversation[]
+  messages      Message[]
+  automations   Automation[]
+  scheduledJobs ScheduledJob[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String
+  passwordHash String   @map("password_hash")
+  name         String?
+  role         UserRole @default(AGENT)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  ownedLeads Lead[] @relation("LeadOwner")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Provider {
+  id                String                @id @default(cuid())
+  tenantId          String                @map("tenant_id")
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type              ProviderType
+  name              String
+  externalId        String?               @map("external_id")
+  status            ProviderStatus        @default(ACTIVE)
+  sessionStatus     ProviderSessionStatus @default(DISCONNECTED) @map("session_status")
+  config            Json                  @default("{}")
+  lastHealthCheckAt DateTime?             @map("last_health_check_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  conversations Conversation[]
+  messages      Message[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("providers")
+}
+
+model Contact {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  externalId String?  @map("external_id")
+  phone      String
+  name       String?
+  email      String?
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  leads         Lead[]
+  conversations Conversation[]
+  messages      Message[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@map("contacts")
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  tenantId    String     @map("tenant_id")
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactId   String     @map("contact_id")
+  contact     Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  ownerUserId String?    @map("owner_user_id")
+  owner       User?      @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  source      String?
+  status      LeadStatus @default(NEW)
+  score       Int        @default(0)
+  metadata    Json       @default("{}")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("leads")
+}
+
+model Conversation {
+  id                    String            @id @default(cuid())
+  tenantId              String            @map("tenant_id")
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactId             String            @map("contact_id")
+  contact               Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  providerId            String            @map("provider_id")
+  provider              Provider          @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  mode                  ConversationMode   @default(BOT)
+  state                 ConversationState  @default(OPEN)
+  lastMessageAt         DateTime?         @map("last_message_at")
+  takeoverAt            DateTime?         @map("takeover_at")
+  pausedAt              DateTime?         @map("paused_at")
+  humanTakenOverByUserId String?           @map("human_taken_over_by_user_id")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  messages Message[]
+
+  @@unique([tenantId, contactId, providerId])
+  @@index([tenantId])
+  @@map("conversations")
+}
+
+model Message {
+  id                String         @id @default(cuid())
+  tenantId          String         @map("tenant_id")
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversationId    String         @map("conversation_id")
+  conversation      Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  contactId         String?        @map("contact_id")
+  contact           Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  providerId        String         @map("provider_id")
+  provider          Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  direction         MessageDirection
+  status            MessageStatus  @default(PENDING)
+  kind              MessageKind    @default(TEXT)
+  content           String
+  mediaUrl          String?        @map("media_url")
+  templateName      String?        @map("template_name")
+  externalMessageId String?        @map("external_message_id")
+  scheduledJobId    String?        @map("scheduled_job_id")
+  fromMe            Boolean        @default(false) @map("from_me")
+  to                String
+  sentAt            DateTime?      @map("sent_at")
+  deliveredAt       DateTime?      @map("delivered_at")
+  readAt            DateTime?      @map("read_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  @@unique([tenantId, externalMessageId])
+  @@index([tenantId])
+  @@index([tenantId, conversationId])
+  @@map("messages")
+}
+
+model Automation {
+  id        String            @id @default(cuid())
+  tenantId  String            @map("tenant_id")
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  trigger   AutomationTrigger
+  enabled   Boolean           @default(true)
+  config    Json              @default("{}")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("automations")
+}
+
+model ScheduledJob {
+  id            String             @id @default(cuid())
+  tenantId      String             @map("tenant_id")
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId         String?            @map("job_id")
+  jobType       ScheduledJobType   @map("job_type")
+  queueName     String             @map("queue_name")
+  status        ScheduledJobStatus @default(PENDING)
+  payload       Json
+  runAt         DateTime           @map("run_at")
+  lockedAt      DateTime?          @map("locked_at")
+  processedAt   DateTime?          @map("processed_at")
+  cancelledAt   DateTime?          @map("cancelled_at")
+  failureReason String?            @map("failure_reason")
+  attempts      Int                @default(0)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@unique([tenantId, jobId])
+  @@index([tenantId])
+  @@index([tenantId, runAt])
+  @@map("scheduled_jobs")
 }
