@@ -50,6 +50,22 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
+  OPENAI_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  OPENAI_DEFAULT_MODEL?: string;
+
+  @IsInt()
+  @Min(1)
+  OPENAI_MAX_CONCURRENCY = 2;
+
+  @IsInt()
+  @Min(1)
+  OPENAI_RATE_LIMIT_PER_MIN = 60;
+
+  @IsOptional()
+  @IsString()
   LOG_LEVEL = 'info';
 
   @IsInt()

@@ -6,12 +6,15 @@ services:
     restart: always
 
     environment:
-      POSTGRES_DB: postgres
+      POSTGRES_DB: evolution
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
 
     ports:
       - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
@@ -25,7 +28,7 @@ services:
       - redis_data:/data
 
   evolution:
-    image: atendai/evolution-api:v2.2.3
+    image: atendai/evolution-api:latest
     container_name: app-evolution
     restart: always
 
@@ -33,21 +36,53 @@ services:
       - "8080:8080"
 
     environment:
+      # SERVER
+      SERVER_URL: http://localhost:8080
+
+      # AUTH
       AUTHENTICATION_TYPE: apikey
-      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      AUTHENTICATION_API_KEY: admin
 
+      # DATABASE
       DATABASE_ENABLED: "true"
-      DATABASE_PROVIDER: "postgresql"
-
+      DATABASE_PROVIDER: postgresql
       DATABASE_CONNECTION_URI: postgresql://postgres:postgres@postgres:5432/evolution
 
-      CACHE_REDIS_ENABLED: "true"
+      # SAVE DATA
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+
+      # REDIS
+      CACHE_REDIS_ENABLED: "false"
+      CACHE_LOCAL_ENABLED: "true"
       CACHE_REDIS_URI: redis://redis:6379
+      CACHE_REDIS_PREFIX_KEY: evolution
+
+
+      # QR
+      QRCODE_LIMIT: 30
+      QRCODE_COLOR: "#198754"
+
+      # SESSION
+      CONFIG_SESSION_PHONE_CLIENT: ${CONFIG_SESSION_PHONE_CLIENT}
+      CONFIG_SESSION_PHONE_NAME: ${CONFIG_SESSION_PHONE_NAME}
+      CONFIG_SESSION_PHONE_VERSION: ${CONFIG_SESSION_PHONE_VERSION}
+
+      DEL_INSTANCE: "false"
+
+      # LOG
+      LOG_LEVEL: INFO
 
     depends_on:
       - postgres
       - redis
 
+    volumes:
+      - evolution_instances:/evolution/instances
+
 volumes:
   postgres_data:
   redis_data:
+  evolution_instances:

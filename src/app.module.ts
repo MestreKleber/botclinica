@@ -17,6 +17,7 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
 import { MessagesModule } from './modules/messages/messages.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { AutomationsModule } from './modules/automations/automations.module';
+import { AiModule } from './modules/ai/ai.module';
 import { WorkersModule } from './workers/workers.module';
 
 @Module({
@@ -38,6 +39,7 @@ import { WorkersModule } from './workers/workers.module';
     MessagesModule,
     LeadsModule,
     AutomationsModule,
+    AiModule,
     WorkersModule,
   ],
 })
